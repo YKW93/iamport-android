@@ -80,6 +80,10 @@ object Iamport {
         return koinApp
     }
 
+    fun create(app: Application) {
+        create(app, null)
+    }
+
     /**
      * Application instance 를 통해 SDK 생명주기 감지, DI 초기화
      */
