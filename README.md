@@ -1,5 +1,6 @@
 # :seedling: I'mport Android SDK :seedling:
 
+[![](https://jitpack.io/v/iamport/iamport-android.svg)](https://jitpack.io/#iamport/iamport-android)
 
 ## 설명
 
@@ -62,7 +63,7 @@
     override fun onCreate() {
         ..   
         val koinApp = startKoin { .. }
-        Iamport.create(this, koinApp)
+        Iamport.createWithKoin(this, koinApp)
     }
     
     // KoinApplication 이 필요한 경우
@@ -103,8 +104,8 @@
 
   // 결제요청
   Iamport.payment("imp123456", request,
-      approveCallback = { /* (Optional) 차이 최종 결제전 콜백 함수. */ },
-      paymentResultCallback = { /* 최종 결제 후 콜백함수 */ })
+      approveCallback = { /* (Optional) CHAI 최종 결제전 콜백 함수. */ },
+      paymentResultCallback = { /* 최종 결제결과 콜백 함수. */ })
       
 
 ```
@@ -192,7 +193,7 @@ Iamport.isPolling()?.observe 에서 true 전달 받을 시점에, 직접 포그�
         public void onCreate() {
             ..
             KoinApplication koinApp = ..
-            Iamport.INSTANCE.create(this, koinApp);
+            Iamport.INSTANCE.createWithKoin(this, koinApp);
         }
     }
 
@@ -226,10 +227,10 @@ Iamport.isPolling()?.observe 에서 true 전달 받을 시점에, 직접 포그�
 
   Iamport.INSTANCE.payment("imp123456", request, 
     iamPortApprove -> {
-      // (Optional) 차이 최종 결제전 콜백 함수.
+      // (Optional) CHAI 최종 결제전 콜백 함수.
       return Unit.INSTANCE;
   }, iamPortResponse -> {
-      // 최종 결제 후 콜백함수
+      // 최종 결제결과 콜백 함수.
       return Unit.INSTANCE;
   });
 ```
@@ -297,7 +298,7 @@ Iamport.isPolling()?.observe 에서 true 전달 받을 시점에, 직접 포그�
         /**
          * DI 로 KOIN 사용시 아래와 같이 사용
         val koinApp = startKoin {
-            logger(AndroidLogger(Level.DEBUG))
+            logger(AndroidLogger())
             androidContext(this@BaseApplication)
         }
         Iamport.create(this, koinApp)
@@ -336,7 +337,7 @@ Iamport.isPolling()?.observe 에서 true 전달 받을 시점에, 직접 포그�
     private fun onClickPayment() {
         ..
         val request = IamPortRequest(
-            pg = pg.getPgSting(storeId = ""),           // PG 사
+            pg = pg.getPgSting(pgId = ""),              // PG 사
             pay_method = payMethod,                     // 결제수단
             name = paymentName,                         // 주문명
             merchant_uid = merchantUid,                 // 주문번호

@@ -9,10 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.iamport.sdk.BuildConfig.DEBUG
-import com.iamport.sdk.data.sdk.IamPortApprove
-import com.iamport.sdk.data.sdk.IamPortRequest
-import com.iamport.sdk.data.sdk.IamPortResponse
-import com.iamport.sdk.data.sdk.Payment
+import com.iamport.sdk.data.sdk.*
 import com.iamport.sdk.domain.di.IamportKoinContext
 import com.iamport.sdk.domain.di.IamportKoinContext.koinApp
 import com.iamport.sdk.domain.di.apiModule
@@ -26,15 +23,15 @@ import com.iamport.sdk.domain.utils.PreventOverlapRun
 import com.iamport.sdk.presentation.activity.IamportSdk
 import com.iamport.sdk.presentation.contract.WebViewActivityContract
 import com.orhanobut.logger.AndroidLogAdapter
+import com.orhanobut.logger.BuildConfig
 import com.orhanobut.logger.Logger
-import com.orhanobut.logger.Logger.d
+import com.orhanobut.logger.Logger.*
 import com.orhanobut.logger.PrettyFormatStrategy
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.logger.AndroidLogger
 import org.koin.core.KoinApplication
 import org.koin.core.component.KoinApiExtension
 import org.koin.core.context.startKoin
-import org.koin.core.logger.Level
 
 
 object Iamport {
@@ -46,9 +43,8 @@ object Iamport {
     private var impCallbackFunction: ((IamPortResponse?) -> Unit)? = null // 결제결과 callbck type#2 함수 호출
     private var approveCallback: ((IamPortApprove) -> Unit)? = null // 차이 결제 상태 approve 콜백
 
-    private var approvePayment = MutableLiveData<Event<IamPortApprove>>()
-    private var close = MutableLiveData<Event<Unit>>()
-    private var finish = MutableLiveData<Event<Unit>>()
+    private var close = MutableLiveData<Event<Unit>>() // FIXME 라이브데이터 쓸 이유가 있나? sdk?.close() 하면 되자너
+    private var finish = MutableLiveData<Event<Unit>>() // FIXME 라이브데이터 쓸 이유가 있나? sdk?.finish() 하면 되자너
 
     private var activity: ComponentActivity? = null
     private var fragment: Fragment? = null
@@ -63,7 +59,6 @@ object Iamport {
     }
 
     private fun createInitialData() {
-        this.approvePayment = MutableLiveData()
         this.close = MutableLiveData()
         this.finish = MutableLiveData()
         this.preventOverlapRun = PreventOverlapRun()
@@ -81,18 +76,18 @@ object Iamport {
     }
 
     fun create(app: Application) {
-        create(app, null)
+        createWithKoin(app)
     }
 
     /**
      * Application instance 를 통해 SDK 생명주기 감지, DI 초기화
      */
     // TODO Application 사용하지 않는 방안 모색
-    fun create(app: Application, koinApp: KoinApplication? = null) {
+    fun createWithKoin(app: Application, koinApp: KoinApplication? = null) {
 
         IamportKoinContext.koinApp = koinApp
             ?: startKoin {
-                logger(AndroidLogger(Level.DEBUG))
+                logger(AndroidLogger())
                 androidContext(app)
                 modules(httpClientModule, apiModule, appModule)
             }
@@ -113,10 +108,24 @@ object Iamport {
                 .tag(CONST.IAMPORT_LOG)
                 .build()
         }
-        Logger.addLogAdapter(AndroidLogAdapter(formatStrategy))
+
+        addLogAdapter(object : AndroidLogAdapter(formatStrategy) {
+            override fun isLoggable(priority: Int, tag: String?): Boolean {
+                if (!DEBUG && priority <= Logger.DEBUG) {
+                    return false
+                }
+                return true
+            }
+        })
 
         isCreated = true
         d("Create IAMPORT SDK")
+
+//        v("LOG TEST VERBOSE")
+//        d("LOG TEST DEBUG")
+//        i("LOG TEST INFO")
+//        w("LOG TEST WANRING")
+//        e("LOG TEST ERROR")
     }
 
     /**
@@ -143,7 +152,6 @@ object Iamport {
             IamportSdk(
                 activity = componentActivity,
                 webViewLauncher = webViewLauncher,
-                approvePayment = approvePayment,
                 close = close,
                 finish = finish
             )
@@ -173,7 +181,6 @@ object Iamport {
         this.iamportSdk = IamportSdk(
             fragment = fragment,
             webViewLauncher = webViewLauncher,
-            approvePayment = approvePayment,
             close = close,
             finish = finish
         )
@@ -182,8 +189,8 @@ object Iamport {
     /**
      * 외부에서 차이 최종결제 요청
      */
-    fun chaiPayment(approve: IamPortApprove) {
-        approvePayment.postValue(Event(approve))
+    fun approvePayment(approve: IamPortApprove) {
+        iamportSdk?.requestApprovePayments(approve)
     }
 
     /**
@@ -238,12 +245,36 @@ object Iamport {
      * @param ((IamPortApprove?) -> Unit)? : (옵셔널) 차이 최종 결제 요청전 콜백
      * @param (IamPortResponse?) -> Unit: ICallbackPaymentResult? : 결제결과 callbck type#2 함수 호출
      */
+    fun certification(
+        userCode: String, iamPortCertification: IamPortCertification, resultCallback: (IamPortResponse?) -> Unit
+    ) {
+        preventOverlapRun?.launch {
+            coreCertification(userCode, iamPortCertification, resultCallback)
+        }
+    }
+
+    /**
+     * 결제 요청
+     * @param ((IamPortApprove?) -> Unit)? : (옵셔널) 차이 최종 결제 요청전 콜백
+     * @param (IamPortResponse?) -> Unit: ICallbackPaymentResult? : 결제결과 callbck type#2 함수 호출
+     */
     fun payment(
         userCode: String, iamPortRequest: IamPortRequest, approveCallback: ((IamPortApprove) -> Unit)? = null, paymentResultCallback: (IamPortResponse?) -> Unit
     ) {
         preventOverlapRun?.launch {
             corePayment(userCode, iamPortRequest, approveCallback, paymentResultCallback)
         }
+    }
+
+    @KoinApiExtension
+    internal fun coreCertification(
+        userCode: String,
+        iamPortCertification: IamPortCertification,
+        paymentResultCallback: ((IamPortResponse?) -> Unit)?
+    ) {
+        this.impCallbackFunction = paymentResultCallback
+
+        iamportSdk?.initStart(Payment(userCode, iamPortCertification = iamPortCertification), paymentResultCallback)
     }
 
     @KoinApiExtension
@@ -256,6 +287,6 @@ object Iamport {
         this.approveCallback = approveCallback
         this.impCallbackFunction = paymentResultCallback
 
-        iamportSdk?.initStart(Payment(userCode, iamPortRequest), approveCallback, paymentResultCallback)
+        iamportSdk?.initStart(Payment(userCode, iamPortRequest = iamPortRequest), approveCallback, paymentResultCallback)
     }
 }

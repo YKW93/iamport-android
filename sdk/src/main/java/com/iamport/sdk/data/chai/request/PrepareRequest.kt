@@ -6,6 +6,7 @@ import com.iamport.sdk.data.sdk.PayMethod
 import com.iamport.sdk.data.sdk.Payment
 import com.iamport.sdk.domain.utils.CONST
 import com.iamport.sdk.domain.utils.Util
+import com.orhanobut.logger.Logger
 
 // * method : POST
 //* content-type : application/json
@@ -30,7 +31,7 @@ data class PrepareRequest(
     val buyer_postcode: String?, // 구매자 우편번호,
     val app_scheme: String?, // 결제 후 돌아갈 app scheme,
     val custom_data: String?, // 결제 건에 연결해 저장할 meta data,
-    val notice_url: String?, // Webhook Url,
+    val notice_url: List<String>?, // Webhook Url,
     val confirm_url: String?, // Confirm process Url,
     val _extra: Extra // 차이 마케팅 팀과 사전협의된 파라메터
 ) {
@@ -39,9 +40,9 @@ data class PrepareRequest(
         /**
          * 차이 앱에 요청하기 위한 리퀘스트 객체 생성
          */
-        fun make(chaiId: String, payment: Payment): PrepareRequest {
+        fun make(chaiId: String, payment: Payment): PrepareRequest? {
             val empty = CONST.EMPTY_STR
-            return payment.iamPortRequest.run {
+            return payment.iamPortRequest?.run {
                 PrepareRequest(
                     escrow = false,
                     amount = amount,
@@ -58,10 +59,13 @@ data class PrepareRequest(
                     buyer_postcode = buyer_postcode,
                     app_scheme = app_scheme,
                     custom_data = custom_data,
-                    notice_url = m_redirect_url,
+                    notice_url = notice_url,
                     confirm_url = null,
                     _extra = Extra(native = OS.aos, bypass = empty)
                 )
+            } ?: run {
+                Logger.d("PrepareRequest, make, iamPortRequest is null")
+                null
             }
         }
     }

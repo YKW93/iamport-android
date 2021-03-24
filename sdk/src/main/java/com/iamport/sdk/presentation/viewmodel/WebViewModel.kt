@@ -76,6 +76,7 @@ class WebViewModel(private val bus: WebViewLiveDataEventBus, private val reposit
         return bus.loading
     }
 
+
     /**
      * PG(nice or 비nice) 따라 webview client 가져오기
      */
@@ -105,5 +106,4 @@ class WebViewModel(private val bus: WebViewLiveDataEventBus, private val reposit
             repository.getWebViewStrategy(payment).doWork(payment)
         }
     }
-
 }
