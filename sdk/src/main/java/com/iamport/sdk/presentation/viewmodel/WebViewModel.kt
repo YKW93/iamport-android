@@ -36,6 +36,18 @@ class WebViewModel(private val bus: WebViewLiveDataEventBus, private val reposit
         return bus.openWebView
     }
 
+
+    fun getCloseWebViewLiveData(): LiveData<Event<Unit>> {
+        return bus.closeWebView
+    }
+
+    /**
+     * 웹뷰 닫기
+     */
+    fun closeWebView() {
+        bus.closeWebView.postValue((Event(Unit)))
+    }
+
     /**
      * 뱅크페이 외부앱 열기
      */

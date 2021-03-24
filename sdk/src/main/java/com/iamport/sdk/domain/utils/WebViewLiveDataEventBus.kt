@@ -13,6 +13,9 @@ open class WebViewLiveDataEventBus {
     // 웹뷰 열기
     val openWebView = MutableLiveData<Event<Payment>>()
 
+    // 웹뷰 종료
+    val closeWebView = MutableLiveData<Event<Unit>>()
+
     // 나이스 + 실시간계좌 뱅크페이 앱 결과
     val niceTransRequestParam = MutableLiveData<Event<String>>()
 

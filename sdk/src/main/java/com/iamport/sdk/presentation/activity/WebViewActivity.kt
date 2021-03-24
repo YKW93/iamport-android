@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.view.View
 import android.widget.ProgressBar
+import androidx.lifecycle.Observer
 import com.google.gson.GsonBuilder
 import com.iamport.sdk.R
 import com.iamport.sdk.data.sdk.IamPortResponse
@@ -50,6 +51,7 @@ class WebViewActivity : BaseActivity<WebviewActivityBinding, WebViewModel>(), Ia
      */
     override fun initStart() {
         i("HELLO I'MPORT WebView SDK! ${Util.versionName(this)}")
+        viewDataBinding.vm = viewModel
 
         initLoading()
 
@@ -76,15 +78,6 @@ class WebViewActivity : BaseActivity<WebviewActivityBinding, WebViewModel>(), Ia
         loadingVisible(true)
     }
 
-
-    /**
-     * 액티비티 알파값 조정
-     */
-    private fun updateAlpha(isWebViewPG: Boolean) {
-        val alpha = if (isWebViewPG) 1.0F else 0.0F
-        viewDataBinding.webviewActivity.alpha = alpha
-    }
-
     /**
      * 관찰할 LiveData 옵저빙
      */
@@ -96,6 +89,7 @@ class WebViewActivity : BaseActivity<WebviewActivityBinding, WebViewModel>(), Ia
             viewModel.loading().observe(this, EventObserver(this::loadingVisible))
 
             viewModel.openWebView().observe(this, EventObserver(this::openWebView))
+            viewModel.getCloseWebViewLiveData().observe(this, EventObserver { finish() })
             viewModel.niceTransRequestParam().observe(this, EventObserver(this::openNiceTransApp))
             viewModel.thirdPartyUri().observe(this, EventObserver(this::openThirdPartyApp))
 
@@ -206,7 +200,6 @@ class WebViewActivity : BaseActivity<WebviewActivityBinding, WebViewModel>(), Ia
         d("오픈! 웹뷰")
 
         setTheme(R.style.Theme_AppCompat_Transparent_NoActionBar)
-        updateAlpha(true)
         loadingVisible(true)
 
         viewDataBinding.webview.run {
